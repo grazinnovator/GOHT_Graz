@@ -1,0 +1,12 @@
+{
+    "name": "rmmz-game",
+    "main": "index.html",
+    "chromium-args": "--force-color-profile=srgb",
+    "window": {
+        "title": "Quest Kross - Gods Shall Die",
+        "width": 1056,
+        "height": 768,
+        "position": "center",
+        "icon": "icon/icon.png"
+    }
+}
