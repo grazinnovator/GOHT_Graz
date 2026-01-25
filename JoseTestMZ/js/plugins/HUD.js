@@ -29,6 +29,11 @@
             this.y = y;
             this._width = width;
             this._height = height;
+            // Track previous values to only update when they change
+            this._lastHp = -1;
+            this._lastMhp = -1;
+            this._lastGold = -1;
+            this._lastTotalBattles = -1;
             this.drawBox();
             //this.drawStats(text,)
         }
@@ -94,9 +99,34 @@
 
         update() {
             super.update();
-            // Optional: live update values
-            this.bitmap.clear();
-            this.drawBox();
+            
+            // Skip updates when message window is open (performance optimization)
+            if ($gameMessage && $gameMessage.isBusy()) {
+                return;
+            }
+            
+            // Only update when values actually change (performance optimization)
+            const leader = $gameParty.leader();
+            if (!leader) return;
+            
+            const currentHp = leader.hp;
+            const currentMhp = leader.mhp;
+            const currentGold = $gameParty.gold();
+            const totalBattles = $gameVariables.value(81) + $gameVariables.value(82) +
+                $gameVariables.value(83) + $gameVariables.value(84) +
+                $gameVariables.value(85) + $gameVariables.value(86) +
+                $gameVariables.value(87) + $gameVariables.value(88);
+            
+            // Only redraw if values changed
+            if (currentHp !== this._lastHp || currentMhp !== this._lastMhp || 
+                currentGold !== this._lastGold || totalBattles !== this._lastTotalBattles) {
+                this._lastHp = currentHp;
+                this._lastMhp = currentMhp;
+                this._lastGold = currentGold;
+                this._lastTotalBattles = totalBattles;
+                this.bitmap.clear();
+                this.drawBox();
+            }
         }
     }
 
@@ -141,6 +171,7 @@
             this.y = y;
             this._width = width;
             this._height = height;
+            this._lastItems = [];
             this.refresh();
         }
 
@@ -183,7 +214,18 @@
 
         update() {
             super.update();
-            // Optionally refresh if dynamic
+            
+            // Skip updates when message window is open (performance optimization)
+            if ($gameMessage && $gameMessage.isBusy()) {
+                return;
+            }
+            
+            // Only refresh if items changed
+            const currentItems = window._lastBattleItems || [];
+            if (JSON.stringify(this._lastItems) !== JSON.stringify(currentItems)) {
+                this.refresh();
+                this._lastItems = JSON.parse(JSON.stringify(currentItems));
+            }
         }
     }
 })();

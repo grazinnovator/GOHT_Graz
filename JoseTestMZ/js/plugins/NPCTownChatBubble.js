@@ -1,10 +1,46 @@
 (() => {
+    // Track active message sprites for cleanup
+    if (!window._activeMessageSprites) {
+        window._activeMessageSprites = [];
+    }
+    
+    // Safe fallback functions in case plugin is disabled (prevents crashes)
+    if (!window.showQuickMessage) {
+        window.showQuickMessage = function() { /* no-op */ };
+    }
+    if (!window.showNpcMessage) {
+        window.showNpcMessage = function() { /* no-op */ };
+    }
+
+    // Clean up old sprites before creating new ones (performance optimization)
+    function cleanupOldMessages() {
+        const scene = SceneManager._scene;
+        if (!scene) return;
+        
+        window._activeMessageSprites = window._activeMessageSprites.filter(sprite => {
+            if (!sprite.parent || sprite.opacity <= 0) {
+                if (sprite.parent) {
+                    scene.removeChild(sprite);
+                }
+                // Bitmap cleanup is handled by the engine, no need to destroy manually
+                return false;
+            }
+            return true;
+        });
+    }
+
     // Sprite-based quick text message that doesn't block input
     window.showQuickMessage = function(text, duration = 60, x = "center", y = "bottom") {
         const scene = SceneManager._scene;
         if (!scene || !scene.children) {
             console.warn("❌ Scene not ready for message");
             return;
+        }
+
+        // Clean up old messages first (performance optimization)
+        // Only clean up if we have many sprites to avoid overhead
+        if (window._activeMessageSprites.length > 5) {
+            cleanupOldMessages();
         }
 
         const padding = 24;
@@ -56,16 +92,48 @@
         sprite.opacity = 255;
         scene.addChild(sprite);
 
-        // Fade out
+        // Track this sprite
+        window._activeMessageSprites.push(sprite);
+
+        // Optimized fade out - only update when actually fading (performance optimization)
         let frames = duration;
         sprite.update = function () {
-            if (frames-- <= 0) {
-                this.opacity -= 8;
-                if (this.opacity <= 0) {
+            // Skip ALL updates when message window is open (performance fix)
+            // Check multiple ways to detect if message is showing
+            const messageActive = $gameMessage && (
+                $gameMessage.isBusy() || 
+                $gameMessage.hasText() ||
+                (SceneManager._scene && SceneManager._scene._messageWindow && 
+                 SceneManager._scene._messageWindow.isOpen())
+            );
+            
+            if (messageActive) {
+                return; // Skip completely - don't even decrement frames
+            }
+            
+            // Skip update if sprite is already removed (safety check)
+            if (!this.parent) {
+                return;
+            }
+            
+            // Only do work when actually fading, not during countdown
+            if (frames > 0) {
+                frames--;
+                return; // Early return - no work needed during countdown
+            }
+            
+            // Now we're fading
+            this.opacity -= 8;
+            if (this.opacity <= 0) {
+                if (this.parent) {
                     scene.removeChild(this);
                 }
+                // Bitmap cleanup is handled by the engine
             }
         };
+        
+        // Mark this sprite so we can identify it later
+        sprite._isChatBubble = true;
     };
 
 
@@ -78,6 +146,7 @@
             return;
         }
 
+        // Cache screen position to avoid multiple calls (performance optimization)
         const centerX = event.screenX();
         const y = event.screenY() + offsetY;
 

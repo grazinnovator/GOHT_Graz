@@ -14,7 +14,9 @@
     Window_Message.prototype.updatePlacement = function() {
         _Window_Message_updatePlacement.call(this);
 
-        // Move message window to top
-        this.y = 0;
+        // Move message window to top (only if not already at top - performance optimization)
+        if (this.y !== 0) {
+            this.y = 0;
+        }
     };
 })();

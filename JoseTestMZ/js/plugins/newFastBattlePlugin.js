@@ -47,15 +47,30 @@
         return false;
     };
 
+    // Process multiple log methods per frame for instant damage display
+    const _Window_BattleLog_callNextMethod = Window_BattleLog.prototype.callNextMethod;
+    Window_BattleLog.prototype.callNextMethod = function() {
+        if (!PluginControl || !PluginControl.isEnabled("fastBattle")) {
+            _Window_BattleLog_callNextMethod.call(this);
+        } else {
+            // Process multiple methods per frame (up to 10) for instant damage resolution
+            let processed = 0;
+            while (this._methods.length > 0 && processed < 10) {
+                _Window_BattleLog_callNextMethod.call(this);
+                processed++;
+            }
+        }
+    };
+
     // Accelerate battle log waits - MORE AGGRESSIVE
     const _Window_BattleLog_wait = Window_BattleLog.prototype.wait;
     Window_BattleLog.prototype.wait = function () {
         if (!PluginControl || !PluginControl.isEnabled("fastBattle")) {
             _Window_BattleLog_wait.call(this);
         } else {
-            // More aggressive: cap at 5 frames instead of calculated value
+            // More aggressive: cap at 1 frame for faster damage resolution
             if (this._waitCount > 0) {
-                this._waitCount = Math.min(this._waitCount, 5);
+                this._waitCount = Math.min(this._waitCount, 1);
             }
             _Window_BattleLog_wait.call(this);
         }
@@ -80,17 +95,50 @@
         return;
     };
 
-    // More aggressive: reduce wait counts in updateAction
+    // Process ALL targets at once for instant damage resolution
     const _BattleManager_updateAction = BattleManager.updateAction;
     BattleManager.updateAction = function() {
         if (!PluginControl || !PluginControl.isEnabled("fastBattle")) {
             _BattleManager_updateAction.call(this);
         } else {
-            // Reduce wait counts before processing
-            if (this._logWindow && this._logWindow._waitCount > 0) {
-                this._logWindow._waitCount = Math.min(this._logWindow._waitCount, 3);
+            // Process ALL remaining targets immediately in one frame
+            if (this._targets && this._targets.length > 0) {
+                // Process all targets at once
+                const targets = this._targets.slice(); // Copy array
+                this._targets.length = 0; // Clear array
+                
+                // Apply damage to all targets immediately
+                targets.forEach(target => {
+                    this.invokeAction(this._subject, target);
+                });
+                
+                // End action after all targets processed
+                this.endAction();
+            } else {
+                // No targets left, end action normally
+                this.endAction();
             }
-            _BattleManager_updateAction.call(this);
+        }
+    };
+    
+    // Also reduce waits in displayActionResults
+    const _Window_BattleLog_displayActionResults = Window_BattleLog.prototype.displayActionResults;
+    Window_BattleLog.prototype.displayActionResults = function(subject, target) {
+        if (!PluginControl || !PluginControl.isEnabled("fastBattle")) {
+            _Window_BattleLog_displayActionResults.call(this, subject, target);
+        } else {
+            // Skip waitForNewLine to speed up multi-target processing
+            if (target.result().used) {
+                this.push('pushBaseLine');
+                this.displayCritical(target);
+                this.push('popupDamage', target);
+                this.push('popupDamage', subject);
+                this.displayDamage(target);
+                this.displayAffectedStatus(target);
+                this.displayFailure(target);
+                // Skip waitForNewLine - removed for speed
+                this.push('popBaseLine');
+            }
         }
     };
 
@@ -161,4 +209,52 @@
             }
         }
     };
+
+    // ===== ACCELERATE ENEMY COLLAPSE =====
+    
+    const _Sprite_Enemy_updateEffect = Sprite_Enemy.prototype.updateEffect;
+    Sprite_Enemy.prototype.updateEffect = function () {
+        if (PluginControl && PluginControl.isEnabled("fastBattle")) {
+            // Accelerate collapse effects by reducing duration faster (4x speed)
+            if (this._effectDuration > 0 && 
+                (this._effectType === 'collapse' || 
+                 this._effectType === 'bossCollapse' || 
+                 this._effectType === 'instantCollapse')) {
+                // Reduce duration by battleSpeed * 2 (4x faster than normal)
+                this._effectDuration = Math.max(0, this._effectDuration - (battleSpeed * 2));
+            }
+        }
+        _Sprite_Enemy_updateEffect.call(this);
+    };
+    
+    // Make collapse effects not block battle flow
+    const _Sprite_Enemy_isEffecting = Sprite_Enemy.prototype.isEffecting;
+    Sprite_Enemy.prototype.isEffecting = function () {
+        if (PluginControl && PluginControl.isEnabled("fastBattle")) {
+            // Don't count collapse effects as "effecting" so battle doesn't wait
+            if (this._effectType === 'collapse' || 
+                this._effectType === 'bossCollapse' || 
+                this._effectType === 'instantCollapse') {
+                return false; // Don't wait for collapse
+            }
+        }
+        return _Sprite_Enemy_isEffecting.call(this);
+    };
+
+    // ===== ACCELERATE DAMAGE POPUPS =====
+    
+    // Speed up damage popup duration (default is 90 frames)
+    if (typeof Sprite_Damage !== 'undefined') {
+        const _Sprite_Damage_update = Sprite_Damage.prototype.update;
+        Sprite_Damage.prototype.update = function () {
+            if (PluginControl && PluginControl.isEnabled("fastBattle")) {
+                // Accelerate damage popup by reducing duration faster
+                if (this._duration > 0) {
+                    // Reduce duration by battleSpeed * 2 (4x faster)
+                    this._duration = Math.max(0, this._duration - (battleSpeed * 2));
+                }
+            }
+            _Sprite_Damage_update.call(this);
+        };
+    }
 })();

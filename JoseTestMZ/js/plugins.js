@@ -39,5 +39,6 @@ var $plugins =
 {"name":"addStatsToStates","status":true,"description":"","parameters":{}},
 {"name":"platforms","status":true,"description":"Reusable moving platforms based on routes. Bidirectional and reusable. v1.0","parameters":{}},
 {"name":"messageAtTop","status":true,"description":"Moves the message window to the top of the screen.","parameters":{}},
-{"name":"newFastBattlePlugin","status":true,"description":"","parameters":{}}
+{"name":"newFastBattlePlugin","status":true,"description":"","parameters":{}},
+{"name":"performanceDebug","status":true,"description":"Temporary performance debug tool - remove after finding bottleneck","parameters":{}}
 ];
