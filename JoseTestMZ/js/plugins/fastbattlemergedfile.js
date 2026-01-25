@@ -160,6 +160,11 @@
                 }
                 // Simultaneous Multi-Target Enemy Skills
                 const targets = action.makeTargets();
+                // Safety check: ensure targets is valid
+                if (!targets || !Array.isArray(targets)) {
+                    console.warn("⚠️ Invalid targets, falling back to normal flow");
+                    return _BattleManager_processTurn.call(this);
+                }
                 if (subject.isEnemy() && targets.length > 1 && action.isForOpponent()) {
 
                     console.log(`🚀 Simultaneous multi-target action: ${item.name}`);
@@ -181,7 +186,7 @@
                             console.log(`⏩ Wait triggered`);
                             if (t.isDead()) {
                                 console.log(`💀 ${t.name()} collapses`);
-                                //t.performCollapse();
+                                t.requestEffect('collapse'); //t.performCollapse();
                             }
                         });
                     }
@@ -193,7 +198,63 @@
                     //this.endAction();
                     console.log(`▶ Step ${step++}: Clearing subject.`);
                     //this._subject = null;
-                } else {
+                    // Clean up: remove action and advance battle state  
+                    //subject.removeCurrentAction();
+                    //_BattleManager_processTurn.call(this);
+                    //return;
+                } 
+                if (subject.isEnemy() && action.isForOpponent()) {
+
+                    console.log(`🚀 Simultaneous multi-target action: ${item.name}`);
+
+                    const fallback_animationId = item.animationId;
+
+                    // Start animations FIRST (before damage)
+                    if (fallback_animationId > 0) {
+                        targets.forEach(t => {
+                            //t.startAnimation(fallback_animationId, false, 0);
+                            console.log(`🎞 Animation ${fallback_animationId} on: ${t.name()}`);
+                        });
+                    }
+
+
+                    if (targets && targets.length > 0) {
+                        // Apply damage to all targets (regardless of animation)
+                        targets.forEach(t => {
+                            console.log(`💥 Applying damage to: ${t.name()}`);
+                            action.apply(t);
+                            console.log(`⏩ Damage applied to ${t.name()}`);
+                            
+                            // startDamagePopup works for both enemies and actors
+                            t.startDamagePopup();
+                            console.log(`⏩ Popup started for ${t.name()}`);
+                            
+                            BattleManager._logWindow._waitCount = 10;
+                            console.log(`⏩ Wait triggered`);
+                            if (t.isDead()) {
+                                console.log(`💀 ${t.name()} collapses`);
+                                t.requestEffect('collapse');
+                            }
+                        });
+                    }
+
+                    console.log(`▶ Step ${step++}: Removing action for ${subject.name()}`);
+                    // i might need to uncomment this code but will leave it as is right now
+                    //subject.removeCurrentAction();
+                    console.log(`▶ Step ${step++}: Ending action phase for ${subject.name()}`);
+                    //this.endAction();
+                    console.log(`▶ Step ${step++}: Clearing subject.`);
+                    //this._subject = null;
+
+                    // Clean up: remove action and advance battle state  
+                    subject.removeCurrentAction();
+                    _BattleManager_processTurn.call(this);
+                    return;
+
+                    
+                } 
+                
+                else {
                     console.log("i am in fallback")
                     // Fallback: process actor or single-target action manually
                     const targetsFallback = action.makeTargets();
@@ -221,7 +282,7 @@
                         console.log("finish damage popup")
                         if (t.isDead()) {
                             console.log(`▶ Step ${step++}: ${t.name()} collapses`);
-                            //t.performCollapse();
+                            t.requestEffect('collapse'); //t.performCollapse();
                         }
                     });
 

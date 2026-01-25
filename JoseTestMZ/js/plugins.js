@@ -14,7 +14,7 @@ var $plugins =
 {"name":"enemyattackanimation","status":false,"description":"","parameters":{}},
 {"name":"fastanimationfrontview","status":false,"description":"","parameters":{}},
 {"name":"ultrafastanimations","status":false,"description":"","parameters":{}},
-{"name":"fastbattlemergedfile","status":true,"description":"","parameters":{}},
+{"name":"fastbattlemergedfile","status":false,"description":"","parameters":{}},
 {"name":"boostStats","status":true,"description":"","parameters":{}},
 {"name":"fadeCurtain","status":true,"description":"","parameters":{}},
 {"name":"equipmentLock","status":true,"description":"","parameters":{}},
@@ -37,5 +37,7 @@ var $plugins =
 {"name":"actionMenu","status":true,"description":"","parameters":{}},
 {"name":"upgradeItems","status":true,"description":"Simple Item Upgrade System - Allows item-to-item upgrades with gold cost. v1.0","parameters":{}},
 {"name":"addStatsToStates","status":true,"description":"","parameters":{}},
-{"name":"platforms","status":true,"description":"Reusable moving platforms based on routes. Bidirectional and reusable. v1.0","parameters":{}}
+{"name":"platforms","status":true,"description":"Reusable moving platforms based on routes. Bidirectional and reusable. v1.0","parameters":{}},
+{"name":"messageAtTop","status":true,"description":"Moves the message window to the top of the screen.","parameters":{}},
+{"name":"newFastBattlePlugin","status":true,"description":"","parameters":{}}
 ];
