@@ -47,16 +47,50 @@
         return false;
     };
 
-    // Accelerate battle log waits
+    // Accelerate battle log waits - MORE AGGRESSIVE
     const _Window_BattleLog_wait = Window_BattleLog.prototype.wait;
     Window_BattleLog.prototype.wait = function () {
         if (!PluginControl || !PluginControl.isEnabled("fastBattle")) {
             _Window_BattleLog_wait.call(this);
         } else {
+            // More aggressive: cap at 5 frames instead of calculated value
             if (this._waitCount > 0) {
-                this._waitCount = Math.min(this._waitCount, Math.ceil(30 / battleSpeed));
+                this._waitCount = Math.min(this._waitCount, 5);
             }
             _Window_BattleLog_wait.call(this);
+        }
+    };
+
+    // Disable wait for effects (animations, etc.)
+    const _Window_BattleLog_waitForEffect = Window_BattleLog.prototype.waitForEffect;
+    Window_BattleLog.prototype.waitForEffect = function () {
+        if (!PluginControl || !PluginControl.isEnabled("fastBattle")) {
+            return _Window_BattleLog_waitForEffect.call(this);
+        }
+        return false; // Don't wait for effects
+    };
+
+    // Reduce waitForNewLine delays
+    const _Window_BattleLog_waitForNewLine = Window_BattleLog.prototype.waitForNewLine;
+    Window_BattleLog.prototype.waitForNewLine = function () {
+        if (!PluginControl || !PluginControl.isEnabled("fastBattle")) {
+            return _Window_BattleLog_waitForNewLine.call(this);
+        }
+        // Skip the wait, just do the newline
+        return;
+    };
+
+    // More aggressive: reduce wait counts in updateAction
+    const _BattleManager_updateAction = BattleManager.updateAction;
+    BattleManager.updateAction = function() {
+        if (!PluginControl || !PluginControl.isEnabled("fastBattle")) {
+            _BattleManager_updateAction.call(this);
+        } else {
+            // Reduce wait counts before processing
+            if (this._logWindow && this._logWindow._waitCount > 0) {
+                this._logWindow._waitCount = Math.min(this._logWindow._waitCount, 3);
+            }
+            _BattleManager_updateAction.call(this);
         }
     };
 
